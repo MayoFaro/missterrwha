@@ -1,4 +1,4 @@
-enum PlayerRole { citizen, undercover }
+enum PlayerRole { citizen, undercover, mrWhite }
 
 class Player {
   final String id;

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/game_provider.dart';
 import '../models/player.dart';
+import '../providers/game_provider.dart';
 import 'game_screen.dart';
 
 class RoleViewingScreen extends StatefulWidget {
@@ -30,6 +30,22 @@ class _RoleViewingScreenState extends State<RoleViewingScreen> {
         MaterialPageRoute(builder: (context) => const GameScreen()),
       );
     }
+  }
+
+  String _roleLabel(PlayerRole? role) {
+    return switch (role) {
+      PlayerRole.undercover => 'Undercover',
+      PlayerRole.mrWhite => 'Mr White',
+      PlayerRole.citizen || null => 'Citizen',
+    };
+  }
+
+  String _roleMessage(Player currentPlayer) {
+    if (currentPlayer.role == PlayerRole.mrWhite) {
+      return 'You have no word.';
+    }
+
+    return currentPlayer.word ?? '';
   }
 
   @override
@@ -66,7 +82,7 @@ class _RoleViewingScreenState extends State<RoleViewingScreen> {
                         const SizedBox(height: 24),
                         if (!_showRole) ...[
                           const Text(
-                            'Tap the button below to see your word.\nMake sure other players are not looking!',
+                            'Tap the button below to see your role.\nMake sure other players are not looking!',
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 24),
@@ -75,7 +91,10 @@ class _RoleViewingScreenState extends State<RoleViewingScreen> {
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.all(16),
                             ),
-                            child: const Text('Reveal My Word', style: TextStyle(fontSize: 18)),
+                            child: const Text(
+                              'Reveal My Role',
+                              style: TextStyle(fontSize: 18),
+                            ),
                           ),
                         ] else ...[
                           Container(
@@ -87,13 +106,31 @@ class _RoleViewingScreenState extends State<RoleViewingScreen> {
                               children: [
                                 const SizedBox(height: 16),
                                 Text(
+                                  'Your role:',
+                                  style: Theme.of(context).textTheme.bodyLarge,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  _roleLabel(currentPlayer.role),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .headlineSmall
+                                      ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
                                   'Your word:',
                                   style: Theme.of(context).textTheme.bodyLarge,
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  currentPlayer.word ?? '',
-                                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                  _roleMessage(currentPlayer),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .headlineMedium
+                                      ?.copyWith(
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),

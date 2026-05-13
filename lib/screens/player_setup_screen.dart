@@ -58,11 +58,11 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Add Players (${gameProvider.players.length}/12)',
+                          'Add Players (${gameProvider.players.length}/14)',
                           style: Theme.of(context).textTheme.headlineSmall,
                         ),
                         const SizedBox(height: 8),
-                        const Text('Minimum 3 players required to start'),
+                        const Text('Minimum 4 players required to start'),
                         const SizedBox(height: 16),
                         Row(
                           children: [
@@ -78,7 +78,9 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
                             ),
                             const SizedBox(width: 8),
                             ElevatedButton(
-                              onPressed: gameProvider.players.length < 12 ? _addPlayer : null,
+                              onPressed: gameProvider.players.length < 14
+                                  ? _addPlayer
+                                  : null,
                               child: const Text('Add'),
                             ),
                           ],
@@ -118,7 +120,7 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
                   child: Text(
                     gameProvider.canStartGame()
                         ? 'Start Game'
-                        : 'Need ${3 - gameProvider.players.length} more players',
+                        : 'Need ${4 - gameProvider.players.length} more players',
                     style: const TextStyle(fontSize: 18),
                   ),
                 ),
