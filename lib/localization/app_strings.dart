@@ -149,4 +149,26 @@ class AppStrings {
       isFr ? '$played jouée(s) / $won gagnée(s)' : '$played played / $won won';
   String get wordsGuessedAsMrWhite =>
       isFr ? 'Mots devinés en Mr White' : 'Words guessed as Mr White';
+  String get createWordPack => isFr ? "Créer un pack" : 'Create a pack';
+  String get createWordPackTitle =>
+      isFr ? "Nouveau pack de mots" : 'New word pack';
+  String get packName => isFr ? 'Nom du pack' : 'Pack name';
+  String get civilWord => isFr ? 'Mot civil' : 'Civil word';
+  String get undercoverWord => isFr ? 'Mot undercover' : 'Undercover word';
+  String get addPair => isFr ? 'Ajouter' : 'Add pair';
+  String get savePack => isFr ? 'Sauvegarder le pack' : 'Save pack';
+  String get noPairsYet =>
+      isFr ? 'Aucune paire ajoutée' : 'No pairs added yet';
+  String get packNameRequired =>
+      isFr ? 'Donnez un nom au pack.' : 'Pack name is required.';
+  String get atLeastOnePair => isFr
+      ? 'Ajoutez au moins une paire de mots.'
+      : 'Add at least one word pair.';
+  String get sharePack => isFr ? 'Partager ce pack' : 'Share this pack';
+  String sharePackSubject(String name) =>
+      isFr ? 'Pack Undercover : $name' : 'Undercover pack: $name';
+  String sharePackHeader(String name, int count, String lang, String diff) =>
+      isFr
+      ? 'Pack Undercover : "$name"\n$count paires | $lang | $diff\nDestinataire : groodep@yahoo.fr'
+      : 'Undercover pack: "$name"\n$count pairs | $lang | $diff\nRecipient: groodep@yahoo.fr';
 }

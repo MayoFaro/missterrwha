@@ -564,6 +564,12 @@ class GameProvider extends ChangeNotifier {
     return pack;
   }
 
+  Future<void> addCustomWordPack(CustomWordPack pack) async {
+    _customWordPacks.add(pack);
+    await _saveCustomWordPacks();
+    notifyListeners();
+  }
+
   Future<void> removeCustomWordPack(String packId) async {
     _customWordPacks.removeWhere((pack) => pack.id == packId);
     await _saveCustomWordPacks();

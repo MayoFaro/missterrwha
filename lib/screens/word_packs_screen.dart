@@ -3,9 +3,11 @@ import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../localization/app_strings.dart';
 import '../providers/game_provider.dart';
+import 'create_word_pack_screen.dart';
 
 class WordPacksScreen extends StatefulWidget {
   const WordPacksScreen({super.key});
@@ -58,6 +60,31 @@ class _WordPacksScreenState extends State<WordPacksScreen> {
     }
   }
 
+  Future<void> _sharePack(CustomWordPack pack, AppStrings strings) async {
+    final importableJson = {
+      'name': pack.name,
+      'language': pack.language.name,
+      'difficulty': pack.difficulty.name,
+      'pairs': pack.pairs
+          .map((p) => {
+                'citizenWord': p.citizenWord,
+                'undercoverWord': p.undercoverWord,
+              })
+          .toList(),
+    };
+
+    final jsonStr = const JsonEncoder.withIndent('  ').convert(importableJson);
+    final header = strings.sharePackHeader(
+      pack.name,
+      pack.pairs.length,
+      _languageLabel(pack.language),
+      _difficultyLabel(strings, pack.difficulty),
+    );
+
+    await Share.share('$header\n\n$jsonStr',
+        subject: strings.sharePackSubject(pack.name));
+  }
+
   String _languageLabel(AppLanguage language) {
     return language == AppLanguage.fr ? 'FR' : 'EN';
   }
@@ -81,19 +108,42 @@ class _WordPacksScreenState extends State<WordPacksScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  ElevatedButton.icon(
-                    onPressed: _importing ? null : () => _importPack(strings),
-                    icon: _importing
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.file_open),
-                    label: Text(strings.importWordPack),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.all(16),
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed:
+                              _importing ? null : () => _importPack(strings),
+                          icon: _importing
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2),
+                                )
+                              : const Icon(Icons.file_open),
+                          label: Text(strings.importWordPack),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.all(14),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const CreateWordPackScreen(),
+                            ),
+                          ),
+                          icon: const Icon(Icons.add),
+                          label: Text(strings.createWordPack),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.all(14),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   Expanded(
@@ -113,14 +163,23 @@ class _WordPacksScreenState extends State<WordPacksScreen> {
                                   subtitle: Text(
                                     '${_languageLabel(pack.language)} • ${_difficultyLabel(strings, pack.difficulty)} • ${strings.pairsCount(pack.pairs.length)}',
                                   ),
-                                  trailing: IconButton(
-                                    tooltip: strings.deletePack,
-                                    icon: const Icon(Icons.delete),
-                                    onPressed: () {
-                                      gameProvider.removeCustomWordPack(
-                                        pack.id,
-                                      );
-                                    },
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        tooltip: strings.sharePack,
+                                        icon: const Icon(Icons.share),
+                                        onPressed: () =>
+                                            _sharePack(pack, strings),
+                                      ),
+                                      IconButton(
+                                        tooltip: strings.deletePack,
+                                        icon: const Icon(Icons.delete),
+                                        onPressed: () =>
+                                            gameProvider.removeCustomWordPack(
+                                                pack.id),
+                                      ),
+                                    ],
                                   ),
                                 );
                               },
