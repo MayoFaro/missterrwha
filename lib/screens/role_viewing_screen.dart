@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import '../localization/app_strings.dart';
 import '../models/player.dart';
 import '../providers/game_provider.dart';
 import 'game_screen.dart';
@@ -18,13 +20,12 @@ class _RoleViewingScreenState extends State<RoleViewingScreen> {
   void _nextPlayer() {
     final gameProvider = context.read<GameProvider>();
 
-    if (_currentPlayerIndex < gameProvider.players.length - 1) {
+    if (_currentPlayerIndex < gameProvider.roleViewingPlayers.length - 1) {
       setState(() {
         _currentPlayerIndex++;
         _showRole = false;
       });
     } else {
-      // All players have seen their roles, start the game
       gameProvider.startPlayingPhase();
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (context) => const GameScreen()),
@@ -32,34 +33,52 @@ class _RoleViewingScreenState extends State<RoleViewingScreen> {
     }
   }
 
-  String _roleLabel(PlayerRole? role) {
+  String _roleLabel(PlayerRole? role, AppStrings strings) {
     return switch (role) {
-      PlayerRole.undercover => 'Undercover',
-      PlayerRole.mrWhite => 'Mr White',
-      PlayerRole.citizen || null => 'Citizen',
+      PlayerRole.undercover => strings.undercovers,
+      PlayerRole.mrWhite => strings.mrWhite,
+      PlayerRole.citizen || null => strings.citizen,
     };
   }
 
-  String _roleMessage(Player currentPlayer) {
+  String _roleMessage(Player currentPlayer, AppStrings strings) {
     if (currentPlayer.role == PlayerRole.mrWhite) {
-      return 'You have no word.';
+      return strings.noWord;
     }
 
     return currentPlayer.word ?? '';
   }
 
+  Widget _adaptiveWordText(BuildContext context, String text) {
+    return SizedBox(
+      width: double.infinity,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          text,
+          maxLines: 1,
+          softWrap: false,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.displaySmall?.copyWith(
+            color: Theme.of(context).colorScheme.primary,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('View Your Role'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: Consumer<GameProvider>(
-        builder: (context, gameProvider, child) {
-          final currentPlayer = gameProvider.players[_currentPlayerIndex];
+    return Consumer<GameProvider>(
+      builder: (context, gameProvider, child) {
+        final strings = AppStrings(gameProvider.appLanguage);
+        final roleViewingPlayers = gameProvider.roleViewingPlayers;
+        final currentPlayer = roleViewingPlayers[_currentPlayerIndex];
 
-          return Padding(
+        return Scaffold(
+          appBar: AppBar(title: Text(strings.roleDiscovery)),
+          body: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -71,18 +90,21 @@ class _RoleViewingScreenState extends State<RoleViewingScreen> {
                     child: Column(
                       children: [
                         Text(
-                          'Player ${_currentPlayerIndex + 1} of ${gameProvider.players.length}',
+                          strings.playerProgress(
+                            _currentPlayerIndex + 1,
+                            roleViewingPlayers.length,
+                          ),
                           style: Theme.of(context).textTheme.bodyLarge,
                         ),
                         const SizedBox(height: 16),
                         Text(
                           currentPlayer.name,
-                          style: Theme.of(context).textTheme.headlineMedium,
+                          style: Theme.of(context).textTheme.displaySmall,
                         ),
                         const SizedBox(height: 24),
                         if (!_showRole) ...[
-                          const Text(
-                            'Tap the button below to see your role.\nMake sure other players are not looking!',
+                          Text(
+                            strings.revealRoleHint,
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 24),
@@ -91,48 +113,38 @@ class _RoleViewingScreenState extends State<RoleViewingScreen> {
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.all(16),
                             ),
-                            child: const Text(
-                              'Reveal My Role',
-                              style: TextStyle(fontSize: 18),
+                            child: Text(
+                              strings.revealMyRole,
+                              style: const TextStyle(fontSize: 22),
                             ),
                           ),
                         ] else ...[
-                          Container(
+                          Padding(
                             padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
                             child: Column(
                               children: [
                                 const SizedBox(height: 16),
                                 Text(
-                                  'Your role:',
+                                  strings.yourRole,
                                   style: Theme.of(context).textTheme.bodyLarge,
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  _roleLabel(currentPlayer.role),
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headlineSmall
-                                      ?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'Your word:',
-                                  style: Theme.of(context).textTheme.bodyLarge,
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  _roleMessage(currentPlayer),
+                                  _roleLabel(currentPlayer.role, strings),
                                   style: Theme.of(context)
                                       .textTheme
                                       .headlineMedium
-                                      ?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                      ?.copyWith(fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  strings.yourWord,
+                                  style: Theme.of(context).textTheme.bodyLarge,
+                                ),
+                                const SizedBox(height: 8),
+                                _adaptiveWordText(
+                                  context,
+                                  _roleMessage(currentPlayer, strings),
                                 ),
                               ],
                             ),
@@ -144,10 +156,11 @@ class _RoleViewingScreenState extends State<RoleViewingScreen> {
                               padding: const EdgeInsets.all(16),
                             ),
                             child: Text(
-                              _currentPlayerIndex < gameProvider.players.length - 1
-                                  ? 'Next Player'
-                                  : 'Start Game',
-                              style: const TextStyle(fontSize: 18),
+                              _currentPlayerIndex <
+                                      roleViewingPlayers.length - 1
+                                  ? strings.nextPlayer
+                                  : strings.start,
+                              style: const TextStyle(fontSize: 22),
                             ),
                           ),
                         ],
@@ -157,9 +170,9 @@ class _RoleViewingScreenState extends State<RoleViewingScreen> {
                 ),
               ],
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 }

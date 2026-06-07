@@ -30,7 +30,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  file_picker: ^8.1.7
+  package_info_plus: ^8.1.2
   provider: ^6.1.1
+  shared_preferences: ^2.3.2
   uuid: ^4.2.1
 
   # The following adds the Cupertino Icons font to your application.
@@ -47,6 +50,14 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/app_icon.png"
+  adaptive_icon_background: "#8E2431"
+  adaptive_icon_foreground: "assets/app_icon.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
