@@ -605,33 +605,25 @@ class GameProvider extends ChangeNotifier {
         .toList();
   }
 
-  List<T> _rotated<T>(List<T> items, int startIndex) {
-    return [...items.skip(startIndex), ...items.take(startIndex)];
-  }
-
   void _assignRoundOrders() {
     if (_players.isEmpty) return;
 
-    final roleViewingStartIndex = _random.nextInt(_players.length);
+    final roleViewingOrder = List<Player>.from(_players)..shuffle(_random);
     _roleViewingPlayerIds
       ..clear()
-      ..addAll(
-        _rotated(_players, roleViewingStartIndex).map((player) => player.id),
-      );
+      ..addAll(roleViewingOrder.map((player) => player.id));
 
-    final possibleFirstSpeakers = _players
-        .where((player) => player.role != PlayerRole.mrWhite)
-        .toList();
-    final firstSpeaker =
-        possibleFirstSpeakers[_random.nextInt(possibleFirstSpeakers.length)];
-    final firstSpeakerIndex = _players.indexWhere(
-      (player) => player.id == firstSpeaker.id,
+    final playingOrder = List<Player>.from(_players)..shuffle(_random);
+    final firstNonMrWhite = playingOrder.indexWhere(
+      (player) => player.role != PlayerRole.mrWhite,
     );
+    if (firstNonMrWhite > 0) {
+      final first = playingOrder.removeAt(firstNonMrWhite);
+      playingOrder.insert(0, first);
+    }
     _playingPlayerIds
       ..clear()
-      ..addAll(
-        _rotated(_players, firstSpeakerIndex).map((player) => player.id),
-      );
+      ..addAll(playingOrder.map((player) => player.id));
   }
 
   void _assignRoles() {

@@ -41,14 +41,6 @@ class _RoleViewingScreenState extends State<RoleViewingScreen> {
     };
   }
 
-  String _roleMessage(Player currentPlayer, AppStrings strings) {
-    if (currentPlayer.role == PlayerRole.mrWhite) {
-      return strings.noWord;
-    }
-
-    return currentPlayer.word ?? '';
-  }
-
   Widget _adaptiveWordText(BuildContext context, String text) {
     return SizedBox(
       width: double.infinity,
@@ -124,28 +116,39 @@ class _RoleViewingScreenState extends State<RoleViewingScreen> {
                             child: Column(
                               children: [
                                 const SizedBox(height: 16),
-                                Text(
-                                  strings.yourRole,
-                                  style: Theme.of(context).textTheme.bodyLarge,
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  _roleLabel(currentPlayer.role, strings),
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headlineMedium
-                                      ?.copyWith(fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  strings.yourWord,
-                                  style: Theme.of(context).textTheme.bodyLarge,
-                                ),
-                                const SizedBox(height: 8),
-                                _adaptiveWordText(
-                                  context,
-                                  _roleMessage(currentPlayer, strings),
-                                ),
+                                if (currentPlayer.role ==
+                                    PlayerRole.mrWhite) ...[
+                                  Text(
+                                    strings.yourRole,
+                                    style:
+                                        Theme.of(context).textTheme.bodyLarge,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    _roleLabel(currentPlayer.role, strings),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .headlineMedium
+                                        ?.copyWith(fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    strings.noWord,
+                                    style:
+                                        Theme.of(context).textTheme.bodyLarge,
+                                  ),
+                                ] else ...[
+                                  Text(
+                                    strings.yourWord,
+                                    style:
+                                        Theme.of(context).textTheme.bodyLarge,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _adaptiveWordText(
+                                    context,
+                                    currentPlayer.word ?? '',
+                                  ),
+                                ],
                               ],
                             ),
                           ),

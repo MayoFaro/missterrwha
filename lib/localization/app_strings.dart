@@ -1,4 +1,4 @@
-import '../providers/game_provider.dart';
+﻿import '../providers/game_provider.dart';
 
 class AppStrings {
   final AppLanguage language;
@@ -40,10 +40,10 @@ class AppStrings {
   String get undercovers => 'Undercover';
   String get mrWhite => 'Mr White';
   String get choosePlayers => isFr ? 'Choix des joueurs' : 'Choose players';
-  String get gameOrder => isFr ? 'Ordre de jeu' : 'Playing order';
+  String get gameOrder => isFr ? "Joueurs de la manche" : "Round players";
   String get tableOrderHint => isFr
-      ? 'Touchez les joueurs dans l’ordre où ils sont placés autour de la table.'
-      : 'Tap players in the order they are seated around the table.';
+      ? "L'ordre de jeu sera tiré au sort au lancement."
+      : "Playing order will be randomized at launch.";
   String get newPlayerName =>
       isFr ? 'Nom du nouveau joueur' : 'New player name';
   String get add => isFr ? 'Ajouter' : 'Add';

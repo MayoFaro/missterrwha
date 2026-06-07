@@ -228,13 +228,6 @@ class _PlayerSelectionScreenState extends State<PlayerSelectionScreen> {
 
                                 return ListTile(
                                   title: Text(playerName),
-                                  subtitle: selected
-                                      ? Text(
-                                          strings.position(
-                                            selectedPosition + 1,
-                                          ),
-                                        )
-                                      : null,
                                   leading: Checkbox(
                                     value: selected,
                                     onChanged:
