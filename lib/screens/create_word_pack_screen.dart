@@ -237,6 +237,12 @@ class _CreateWordPackScreenState extends State<CreateWordPackScreen> {
                             onPressed: _addPair,
                             icon: const Icon(Icons.add),
                             tooltip: strings.addPair,
+                            style: IconButton.styleFrom(
+                              backgroundColor:
+                                  Theme.of(context).colorScheme.secondary,
+                              foregroundColor:
+                                  Theme.of(context).colorScheme.onSecondary,
+                            ),
                           ),
                         ],
                       ),
