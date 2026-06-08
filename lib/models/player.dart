@@ -3,18 +3,16 @@ enum PlayerRole { citizen, undercover, mrWhite }
 class Player {
   final String id;
   final String name;
-  PlayerRole? role;
-  String? word;
-  bool isEliminated;
-  bool hasVoted;
+  final PlayerRole? role;
+  final String? word;
+  final bool isEliminated;
 
-  Player({
+  const Player({
     required this.id,
     required this.name,
     this.role,
     this.word,
     this.isEliminated = false,
-    this.hasVoted = false,
   });
 
   Player copyWith({
@@ -23,7 +21,6 @@ class Player {
     PlayerRole? role,
     String? word,
     bool? isEliminated,
-    bool? hasVoted,
   }) {
     return Player(
       id: id ?? this.id,
@@ -31,7 +28,6 @@ class Player {
       role: role ?? this.role,
       word: word ?? this.word,
       isEliminated: isEliminated ?? this.isEliminated,
-      hasVoted: hasVoted ?? this.hasVoted,
     );
   }
 }

@@ -73,7 +73,7 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            gameProvider.getWinner(),
+                            strings.winnerMessage(gameProvider.winner),
                             style: Theme.of(context).textTheme.headlineSmall,
                           ),
                           const SizedBox(height: 12),

@@ -114,12 +114,12 @@ class _GameScreenState extends State<GameScreen> {
               const SizedBox(height: 16),
               Text(
                 strings.roleLabel(
-                  gameProvider.getRoleLabel(eliminatedPlayer?.role),
+                  strings.roleNameLabel(eliminatedPlayer?.role),
                 ),
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
-              Text(gameProvider.getLastEliminationOutcome()),
+              Text(strings.eliminationOutcome(gameProvider.winner)),
             ],
           ),
           actions: <Widget>[

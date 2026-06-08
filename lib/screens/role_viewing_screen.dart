@@ -68,7 +68,9 @@ class _RoleViewingScreenState extends State<RoleViewingScreen> {
         final roleViewingPlayers = gameProvider.roleViewingPlayers;
         final currentPlayer = roleViewingPlayers[_currentPlayerIndex];
 
-        return Scaffold(
+        return PopScope(
+          canPop: false,
+          child: Scaffold(
           appBar: AppBar(title: Text(strings.roleDiscovery)),
           body: Padding(
             padding: const EdgeInsets.all(16.0),
@@ -174,7 +176,8 @@ class _RoleViewingScreenState extends State<RoleViewingScreen> {
               ],
             ),
           ),
-        );
+          ),  // Scaffold
+        );    // PopScope
       },
     );
   }

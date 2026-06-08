@@ -44,6 +44,13 @@ class _CreateWordPackScreenState extends State<CreateWordPackScreen> {
     final civil = _civilController.text.trim();
     final undercover = _undercoverController.text.trim();
     if (civil.isEmpty || undercover.isEmpty) return;
+    if (civil.toLowerCase() == undercover.toLowerCase()) {
+      final strings = AppStrings(context.read<GameProvider>().appLanguage);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.pairWordsIdentical)),
+      );
+      return;
+    }
     setState(() {
       _pairs.add((civil, undercover));
       _civilController.clear();
@@ -124,7 +131,36 @@ class _CreateWordPackScreenState extends State<CreateWordPackScreen> {
       builder: (context, gameProvider, child) {
         final strings = AppStrings(gameProvider.appLanguage);
 
-        return Scaffold(
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, _) async {
+            if (didPop) return;
+            if (_pairs.isEmpty && _nameController.text.trim().isEmpty) {
+              Navigator.of(context).pop();
+              return;
+            }
+            final shouldPop = await showDialog<bool>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: Text(strings.discardPackTitle),
+                content: Text(strings.discardPackMessage),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(false),
+                    child: Text(strings.cancel),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(true),
+                    child: Text(strings.discardConfirm),
+                  ),
+                ],
+              ),
+            );
+            if ((shouldPop ?? false) && context.mounted) {
+              Navigator.of(context).pop();
+            }
+          },
+          child: Scaffold(
           appBar: AppBar(title: Text(strings.createWordPackTitle)),
           body: SafeArea(
             child: Column(
@@ -263,7 +299,8 @@ class _CreateWordPackScreenState extends State<CreateWordPackScreen> {
               ],
             ),
           ),
-        );
+          ),  // Scaffold
+        );    // PopScope
       },
     );
   }

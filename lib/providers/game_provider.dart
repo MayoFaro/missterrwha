@@ -62,6 +62,39 @@ class CustomWordPack {
       throw const FormatException('Missing pairs list.');
     }
 
+    final seenKeys = <String>{};
+    final pairs = <WordPair>[];
+
+    for (final pairJson in pairsJson) {
+      if (pairJson is! Map<String, dynamic>) {
+        throw const FormatException('Invalid pair entry.');
+      }
+
+      final citizenWord = (pairJson['citizenWord'] as String?)?.trim();
+      final undercoverWord = (pairJson['undercoverWord'] as String?)?.trim();
+      if (citizenWord == null ||
+          citizenWord.isEmpty ||
+          undercoverWord == null ||
+          undercoverWord.isEmpty) {
+        throw const FormatException('Invalid pair words.');
+      }
+
+      if (citizenWord.length > 50 || undercoverWord.length > 50) continue;
+      if (citizenWord.toLowerCase() == undercoverWord.toLowerCase()) continue;
+
+      final key =
+          '${citizenWord.toLowerCase()}|${undercoverWord.toLowerCase()}';
+      if (seenKeys.contains(key)) continue;
+      seenKeys.add(key);
+      pairs.add(WordPair(citizenWord: citizenWord, undercoverWord: undercoverWord));
+
+      if (pairs.length >= 2000) break;
+    }
+
+    if (pairs.isEmpty) {
+      throw const FormatException('Pack contains no valid pairs.');
+    }
+
     return CustomWordPack(
       id: json['id'] as String? ?? const Uuid().v4(),
       name: (json['name'] as String?)?.trim() ?? 'Pack',
@@ -70,25 +103,7 @@ class CustomWordPack {
       importedAt:
           DateTime.tryParse(json['importedAt'] as String? ?? '') ??
           DateTime.now(),
-      pairs: pairsJson.map((pairJson) {
-        if (pairJson is! Map<String, dynamic>) {
-          throw const FormatException('Invalid pair entry.');
-        }
-
-        final citizenWord = (pairJson['citizenWord'] as String?)?.trim();
-        final undercoverWord = (pairJson['undercoverWord'] as String?)?.trim();
-        if (citizenWord == null ||
-            citizenWord.isEmpty ||
-            undercoverWord == null ||
-            undercoverWord.isEmpty) {
-          throw const FormatException('Invalid pair words.');
-        }
-
-        return WordPair(
-          citizenWord: citizenWord,
-          undercoverWord: undercoverWord,
-        );
-      }).toList(),
+      pairs: pairs,
     );
   }
 
@@ -214,6 +229,7 @@ class GameProvider extends ChangeNotifier {
   static const String _lastSessionLeaderboardKey = 'last_session_leaderboard';
   static const String _appLanguageKey = 'app_language';
   static const String _customWordPacksKey = 'custom_word_packs';
+  static const String _sessionScoresKey = 'session_scores';
   final List<Player> _players = [];
   final List<String> _registeredPlayerNames = [];
   final List<String> _selectedPlayerNames = [];
@@ -307,9 +323,11 @@ class GameProvider extends ChangeNotifier {
   int get currentRound => _currentRound;
   Map<String, String> get mrWhiteGuesses => Map.unmodifiable(_mrWhiteGuesses);
   bool get hasMrWhite => _players.any((p) => p.role == PlayerRole.mrWhite);
-  bool get needsMrWhiteGuess =>
-      _lastEliminatedPlayer?.role == PlayerRole.mrWhite &&
-      _mrWhiteGuesses.isEmpty;
+  bool get needsMrWhiteGuess {
+    final eliminated = _lastEliminatedPlayer;
+    if (eliminated?.role != PlayerRole.mrWhite) return false;
+    return !_mrWhiteGuesses.containsKey(eliminated!.id);
+  }
   List<Player> get mrWhiteGuessPlayers {
     final eliminatedPlayer = _lastEliminatedPlayer;
     if (eliminatedPlayer?.role != PlayerRole.mrWhite) return [];
@@ -326,6 +344,7 @@ class GameProvider extends ChangeNotifier {
     _loadSavedPlayers();
     _loadStatistics();
     _loadCustomWordPacks();
+    _loadSessionScores();
   }
 
   // Player management
@@ -543,6 +562,23 @@ class GameProvider extends ChangeNotifier {
     );
   }
 
+  Future<void> _loadSessionScores() async {
+    final preferences = await SharedPreferences.getInstance();
+    final json = preferences.getString(_sessionScoresKey);
+    if (json == null) return;
+    final decoded = jsonDecode(json);
+    if (decoded is! Map<String, dynamic>) return;
+    _sessionScores
+      ..clear()
+      ..addAll(decoded.map((k, v) => MapEntry(k, (v as num).toInt())));
+    notifyListeners();
+  }
+
+  Future<void> _saveSessionScores() async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(_sessionScoresKey, jsonEncode(_sessionScores));
+  }
+
   Future<CustomWordPack> importCustomWordPack(String source) async {
     final decoded = jsonDecode(source);
     if (decoded is! Map<String, dynamic>) {
@@ -733,16 +769,19 @@ class GameProvider extends ChangeNotifier {
 
   // Game flow
   void startPlayingPhase() {
+    if (_gameState != GameState.roleViewing) return;
     _gameState = GameState.playing;
     notifyListeners();
   }
 
   void startVotingPhase() {
+    if (_gameState != GameState.playing) return;
     _gameState = GameState.voting;
     notifyListeners();
   }
 
   void eliminatePlayer(String playerId) {
+    if (_gameState != GameState.voting) return;
     final playerIndex = _players.indexWhere((p) => p.id == playerId);
     if (playerIndex != -1) {
       _lastEliminatedPlayer = _players[playerIndex];
@@ -784,41 +823,6 @@ class GameProvider extends ChangeNotifier {
     }
 
     notifyListeners();
-  }
-
-  String getWinner() {
-    return switch ((_winner, _appLanguage)) {
-      (WinningTeam.citizens, AppLanguage.fr) => "Les civils gagnent !",
-      (WinningTeam.undercovers, AppLanguage.fr) => "Les Undercover gagnent !",
-      (WinningTeam.mrWhite, AppLanguage.fr) => "Mr White gagne !",
-      (WinningTeam.citizens, AppLanguage.en) => "Citizens win!",
-      (WinningTeam.undercovers, AppLanguage.en) => "Undercovers win!",
-      (WinningTeam.mrWhite, AppLanguage.en) => "Mr White wins!",
-      (null, _) => "",
-    };
-  }
-
-  String getRoleLabel(PlayerRole? role) {
-    return switch ((role, _appLanguage)) {
-      (PlayerRole.citizen, AppLanguage.fr) => "Civil",
-      (PlayerRole.citizen, AppLanguage.en) => "Citizen",
-      (PlayerRole.undercover, _) => "Undercover",
-      (PlayerRole.mrWhite, _) => "Mr White",
-      (null, AppLanguage.fr) => "Inconnu",
-      (null, AppLanguage.en) => "Unknown",
-    };
-  }
-
-  String getLastEliminationOutcome() {
-    if (_winner != null) {
-      return _appLanguage == AppLanguage.fr
-          ? "${getWinner()} Une condition de victoire est atteinte."
-          : "${getWinner()} A win condition has been reached.";
-    }
-
-    return _appLanguage == AppLanguage.fr
-        ? "Aucune condition de victoire n'est atteinte. La manche continue."
-        : "No win condition has been reached. The round continues.";
   }
 
   void submitMrWhiteGuesses(Map<String, String> guesses) {
@@ -902,6 +906,7 @@ class GameProvider extends ChangeNotifier {
     _commitRoundStatistics();
     _roundScoresCommitted = true;
     _saveStatistics();
+    _saveSessionScores();
     notifyListeners();
   }
 
@@ -993,6 +998,7 @@ class GameProvider extends ChangeNotifier {
     _roundScoresCommitted = false;
     _usedWordPairKeys.clear();
     _saveStatistics();
+    _saveSessionScores();
     notifyListeners();
   }
 

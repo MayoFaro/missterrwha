@@ -1,4 +1,5 @@
-﻿import '../providers/game_provider.dart';
+﻿import '../models/player.dart';
+import '../providers/game_provider.dart';
 
 class AppStrings {
   final AppLanguage language;
@@ -15,9 +16,6 @@ class AppStrings {
   String get importWordPack => isFr ? 'Importer un pack' : 'Import a pack';
   String get noCustomPacks =>
       isFr ? 'Aucun pack additionnel importé' : 'No additional pack imported';
-  String get customPackHelp => isFr
-      ? 'Choisissez un fichier JSON déjà présent sur ce téléphone. Les packs intégrés restent toujours disponibles.'
-      : 'Choose a JSON file already available on this phone. Built-in packs always remain available.';
   String importPackSuccess(String name, int count) => isFr
       ? 'Pack "$name" importé avec $count paire(s).'
       : 'Pack "$name" imported with $count pair(s).';
@@ -27,7 +25,6 @@ class AppStrings {
   String get deletePack => isFr ? 'Supprimer ce pack' : 'Delete this pack';
   String get importedPacks => isFr ? 'Packs importés' : 'Imported packs';
   String pairsCount(int count) => isFr ? '$count paire(s)' : '$count pair(s)';
-  String get packFormatTitle => isFr ? 'Format attendu' : 'Expected format';
   String get menu => isFr ? 'Menu' : 'Menu';
   String get playerCount => isFr ? 'Nombre de joueurs' : 'Number of players';
   String get players => isFr ? 'joueurs' : 'players';
@@ -49,8 +46,6 @@ class AppStrings {
   String get add => isFr ? 'Ajouter' : 'Add';
   String get noRegisteredPlayers =>
       isFr ? 'Aucun joueur enregistré' : 'No saved players';
-  String position(int position) =>
-      isFr ? 'Position $position' : 'Position $position';
   String get removeFromGame =>
       isFr ? 'Retirer de cette partie' : 'Remove from this game';
   String get launchRound => isFr ? 'Lancer la manche' : 'Start round';
@@ -171,4 +166,38 @@ class AppStrings {
       isFr
       ? 'Pack Undercover : "$name"\n$count paires | $lang | $diff\nDestinataire : groodep@yahoo.fr'
       : 'Undercover pack: "$name"\n$count pairs | $lang | $diff\nRecipient: groodep@yahoo.fr';
+  String winnerMessage(WinningTeam? winner) => switch ((winner, isFr)) {
+    (WinningTeam.citizens, true) => 'Les civils gagnent !',
+    (WinningTeam.undercovers, true) => 'Les Undercover gagnent !',
+    (WinningTeam.mrWhite, true) => 'Mr White gagne !',
+    (WinningTeam.citizens, false) => 'Citizens win!',
+    (WinningTeam.undercovers, false) => 'Undercovers win!',
+    (WinningTeam.mrWhite, false) => 'Mr White wins!',
+    (null, _) => '',
+  };
+
+  String roleNameLabel(PlayerRole? role) => switch ((role, isFr)) {
+    (PlayerRole.citizen, true) => 'Civil',
+    (PlayerRole.citizen, false) => 'Citizen',
+    (PlayerRole.undercover, _) => 'Undercover',
+    (PlayerRole.mrWhite, _) => 'Mr White',
+    (null, true) => 'Inconnu',
+    (null, false) => 'Unknown',
+  };
+
+  String eliminationOutcome(WinningTeam? winner) => winner != null
+      ? '${winnerMessage(winner)} ${isFr ? "Une condition de victoire est atteinte." : "A win condition has been reached."}'
+      : isFr
+          ? "Aucune condition de victoire n'est atteinte. La manche continue."
+          : 'No win condition has been reached. The round continues.';
+
+  String get discardPackTitle =>
+      isFr ? 'Abandonner ce pack ?' : 'Discard this pack?';
+  String get discardPackMessage => isFr
+      ? 'Les paires saisies ne seront pas sauvegardées.'
+      : 'The entered pairs will not be saved.';
+  String get discardConfirm => isFr ? 'Abandonner' : 'Discard';
+  String get pairWordsIdentical => isFr
+      ? 'Les deux mots doivent être différents.'
+      : 'Both words must be different.';
 }
