@@ -1,32 +1,49 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:undercover/data/word_pairs.dart';
 import 'package:undercover/models/player.dart';
 import 'package:undercover/providers/game_provider.dart';
 
 // Helper: setup a GameProvider with [playerCount] players, game started and in playing phase.
 Future<GameProvider> setupGame(int playerCount) async {
   final names = [
-    'Alice', 'Bob', 'Charlie', 'Dave', 'Eve', 'Frank',
-    'Grace', 'Henry', 'Iris', 'Jack', 'Kate', 'Leo', 'Mia', 'Nick',
+    'Alice',
+    'Bob',
+    'Charlie',
+    'Dave',
+    'Eve',
+    'Frank',
+    'Grace',
+    'Henry',
+    'Iris',
+    'Jack',
+    'Kate',
+    'Leo',
+    'Mia',
+    'Nick',
   ];
   assert(playerCount >= 4 && playerCount <= 14);
 
   final provider = GameProvider();
-  await Future.delayed(Duration.zero);
+  while (!provider.isInitialized) {
+    await Future<void>.delayed(Duration.zero);
+  }
 
   for (var i = 0; i < playerCount; i++) {
     provider.addPlayer(names[i]);
   }
-  provider.startGame();             // → roleViewing
-  provider.startPlayingPhase();     // → playing
+  provider.startGame(); // → roleViewing
+  provider.startPlayingPhase(); // → playing
   return provider;
 }
 
 // Helper: transition to voting and eliminate a player in one call.
 void voteEliminate(GameProvider provider, String playerId) {
-  provider.startVotingPhase();  // playing → voting
-  provider.eliminatePlayer(playerId);  // → playing or gameOver
+  provider.startVotingPhase(); // playing → voting
+  provider.eliminatePlayer(playerId); // → playing or gameOver
 }
 
 void main() {
@@ -56,24 +73,27 @@ void main() {
 
     test('false when eliminated player is not Mr. White', () async {
       final provider = await setupGame(5);
-      final nonMrWhite = provider.players
-          .firstWhere((p) => p.role != PlayerRole.mrWhite);
+      final nonMrWhite = provider.players.firstWhere(
+        (p) => p.role != PlayerRole.mrWhite,
+      );
       voteEliminate(provider, nonMrWhite.id);
       expect(provider.needsMrWhiteGuess, false);
     });
 
     test('true when Mr. White is eliminated and has not guessed', () async {
       final provider = await setupGame(5);
-      final mrWhite = provider.players
-          .firstWhere((p) => p.role == PlayerRole.mrWhite);
+      final mrWhite = provider.players.firstWhere(
+        (p) => p.role == PlayerRole.mrWhite,
+      );
       voteEliminate(provider, mrWhite.id);
       expect(provider.needsMrWhiteGuess, true);
     });
 
     test('false after Mr. White submits a guess', () async {
       final provider = await setupGame(5);
-      final mrWhite = provider.players
-          .firstWhere((p) => p.role == PlayerRole.mrWhite);
+      final mrWhite = provider.players.firstWhere(
+        (p) => p.role == PlayerRole.mrWhite,
+      );
       voteEliminate(provider, mrWhite.id);
       provider.submitMrWhiteGuesses({mrWhite.id: 'SomeWord'});
       expect(provider.needsMrWhiteGuess, false);
@@ -106,8 +126,9 @@ void main() {
     test('citizens win when the single undercover is eliminated', () async {
       final provider = await setupGame(4);
       // 4 players: 3 citizens, 1 undercover, 0 Mr. White
-      final undercover = provider.players
-          .firstWhere((p) => p.role == PlayerRole.undercover);
+      final undercover = provider.players.firstWhere(
+        (p) => p.role == PlayerRole.undercover,
+      );
       voteEliminate(provider, undercover.id);
       expect(provider.winner, WinningTeam.citizens);
       expect(provider.gameState, GameState.gameOver);
@@ -134,10 +155,12 @@ void main() {
       // Citizens win only when Mr. White AND all undercovers are gone.
       // Simplest path: eliminate undercover first, then Mr. White.
       final provider = await setupGame(5);
-      final undercover = provider.players
-          .firstWhere((p) => p.role == PlayerRole.undercover);
-      final mrWhite = provider.players
-          .firstWhere((p) => p.role == PlayerRole.mrWhite);
+      final undercover = provider.players.firstWhere(
+        (p) => p.role == PlayerRole.undercover,
+      );
+      final mrWhite = provider.players.firstWhere(
+        (p) => p.role == PlayerRole.mrWhite,
+      );
 
       voteEliminate(provider, undercover.id);
       expect(provider.gameState, isNot(GameState.gameOver));
@@ -175,8 +198,9 @@ void main() {
   group('commitRoundScores', () {
     test('is idempotent — calling twice does not double-count', () async {
       final provider = await setupGame(4);
-      final undercover = provider.players
-          .firstWhere((p) => p.role == PlayerRole.undercover);
+      final undercover = provider.players.firstWhere(
+        (p) => p.role == PlayerRole.undercover,
+      );
       voteEliminate(provider, undercover.id);
 
       provider.commitRoundScores();
@@ -188,8 +212,9 @@ void main() {
 
     test('citizens receive points when undercover is eliminated', () async {
       final provider = await setupGame(4);
-      final undercover = provider.players
-          .firstWhere((p) => p.role == PlayerRole.undercover);
+      final undercover = provider.players.firstWhere(
+        (p) => p.role == PlayerRole.undercover,
+      );
       voteEliminate(provider, undercover.id);
       provider.commitRoundScores();
 
@@ -218,8 +243,7 @@ void main() {
       final provider = await setupGame(5);
       final citizenWord = provider.currentWordPair!.citizenWord;
       expect(provider.isCorrectMrWhiteGuess(citizenWord), true);
-      expect(
-          provider.isCorrectMrWhiteGuess(citizenWord.toUpperCase()), true);
+      expect(provider.isCorrectMrWhiteGuess(citizenWord.toUpperCase()), true);
     });
 
     test('false for wrong word', () async {
@@ -265,5 +289,169 @@ void main() {
       provider.addPlayer('Dave');
       expect(provider.canStartGame(), true);
     });
+  });
+
+  group("Balanced word pair selection", () {
+    String pairKey(String first, String second) {
+      final words = [first.toLowerCase(), second.toLowerCase()]..sort();
+      return words.join("|");
+    }
+
+    test("contains the reviewed initial counters", () {
+      expect(WordPairsData.initialUsageCounts["magasin|marché"], 2);
+      expect(WordPairsData.initialUsageCounts["chaise|fauteuil"], 1);
+      expect(WordPairsData.initialUsageCounts["accueil|guichet"], 1);
+      expect(WordPairsData.initialUsageCounts.length, 23);
+    });
+
+    test("removes the three rejected easy pairs", () {
+      final keys = WordPairsData.wordPairs
+          .map((pair) => pairKey(pair.citizenWord, pair.undercoverWord))
+          .toSet();
+      expect(WordPairsData.wordPairs.length, 121);
+      expect(keys, isNot(contains("affiche|panneau")));
+      expect(keys, isNot(contains("sandwich|wrap")));
+      expect(keys, isNot(contains("journaliste|reporter")));
+    });
+
+    test("selects a uniquely least-used pair", () async {
+      final target = WordPairsData.wordPairs.first;
+      final targetKey = pairKey(target.citizenWord, target.undercoverWord);
+      final counts = {
+        for (final pair in WordPairsData.wordPairs)
+          pairKey(pair.citizenWord, pair.undercoverWord): 1,
+        targetKey: 0,
+      };
+      SharedPreferences.setMockInitialValues({
+        "word_pair_usage_counts": jsonEncode(counts),
+      });
+
+      final provider = GameProvider();
+      while (!provider.isInitialized) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      for (final name in ["Alice", "Bob", "Charlie", "Dave"]) {
+        provider.addPlayer(name);
+      }
+      provider.startGame();
+
+      expect(
+        pairKey(
+          provider.currentWordPair!.citizenWord,
+          provider.currentWordPair!.undercoverWord,
+        ),
+        targetKey,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      final preferences = await SharedPreferences.getInstance();
+      final persistedCounts =
+          jsonDecode(preferences.getString("word_pair_usage_counts")!)
+              as Map<String, dynamic>;
+      expect(persistedCounts[targetKey], 1);
+      expect(
+        preferences.getStringList("recent_word_pair_keys"),
+        contains(targetKey),
+      );
+    });
+
+    test("does not select a recent pair even if it is less used", () async {
+      final recent = WordPairsData.wordPairs.first;
+      final recentKey = pairKey(recent.citizenWord, recent.undercoverWord);
+      final counts = {
+        for (final pair in WordPairsData.wordPairs)
+          pairKey(pair.citizenWord, pair.undercoverWord): 1,
+        recentKey: 0,
+      };
+      SharedPreferences.setMockInitialValues({
+        "word_pair_usage_counts": jsonEncode(counts),
+        "recent_word_pair_keys": [recentKey],
+      });
+
+      final provider = GameProvider();
+      while (!provider.isInitialized) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      for (final name in ["Alice", "Bob", "Charlie", "Dave"]) {
+        provider.addPlayer(name);
+      }
+      provider.startGame();
+
+      expect(
+        pairKey(
+          provider.currentWordPair!.citizenWord,
+          provider.currentWordPair!.undercoverWord,
+        ),
+        isNot(recentKey),
+      );
+    });
+  });
+
+  group("Playing order after a vote", () {
+    test("keeps the same first player while that player is alive", () async {
+      final provider = await setupGame(7);
+      final initialFirst = provider.firstPlayingPlayer!;
+      final eliminated = provider.alivePlayers.firstWhere(
+        (player) =>
+            player.id != initialFirst.id && player.role == PlayerRole.citizen,
+      );
+
+      voteEliminate(provider, eliminated.id);
+
+      expect(provider.gameState, GameState.playing);
+      expect(provider.firstPlayingPlayer!.id, initialFirst.id);
+      expect(
+        provider.alivePlayers.map((player) => player.id),
+        isNot(contains(eliminated.id)),
+      );
+    });
+
+    test(
+      "chooses a non-Mr White first player if the first is eliminated",
+      () async {
+        final provider = await setupGame(7);
+        final initialFirst = provider.firstPlayingPlayer!;
+
+        voteEliminate(provider, initialFirst.id);
+
+        expect(provider.gameState, GameState.playing);
+        expect(provider.firstPlayingPlayer!.id, isNot(initialFirst.id));
+        expect(provider.firstPlayingPlayer!.role, isNot(PlayerRole.mrWhite));
+      },
+    );
+  });
+
+  group("Role viewing progress", () {
+    test(
+      "restores the current player and assigned round after restart",
+      () async {
+        final provider = GameProvider();
+        while (!provider.isInitialized) {
+          await Future<void>.delayed(Duration.zero);
+        }
+        for (final name in ["Alice", "Bob", "Charlie", "Dave", "Eve"]) {
+          provider.addPlayer(name);
+        }
+        provider.startGame();
+        provider.advanceRoleViewing();
+        provider.advanceRoleViewing();
+        final expectedPlayerId = provider.roleViewingPlayers[2].id;
+        final expectedPair = provider.currentWordPair!;
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+
+        final restored = GameProvider();
+        while (!restored.isInitialized) {
+          await Future<void>.delayed(Duration.zero);
+        }
+
+        expect(restored.gameState, GameState.roleViewing);
+        expect(restored.currentRoleViewingIndex, 2);
+        expect(restored.roleViewingPlayers[2].id, expectedPlayerId);
+        expect(restored.currentWordPair!.citizenWord, expectedPair.citizenWord);
+        expect(
+          restored.currentWordPair!.undercoverWord,
+          expectedPair.undercoverWord,
+        );
+      },
+    );
   });
 }

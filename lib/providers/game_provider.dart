@@ -86,7 +86,9 @@ class CustomWordPack {
           '${citizenWord.toLowerCase()}|${undercoverWord.toLowerCase()}';
       if (seenKeys.contains(key)) continue;
       seenKeys.add(key);
-      pairs.add(WordPair(citizenWord: citizenWord, undercoverWord: undercoverWord));
+      pairs.add(
+        WordPair(citizenWord: citizenWord, undercoverWord: undercoverWord),
+      );
 
       if (pairs.length >= 2000) break;
     }
@@ -230,6 +232,10 @@ class GameProvider extends ChangeNotifier {
   static const String _appLanguageKey = 'app_language';
   static const String _customWordPacksKey = 'custom_word_packs';
   static const String _sessionScoresKey = 'session_scores';
+  static const String _roleViewingProgressKey = 'role_viewing_progress';
+  static const String _wordPairUsageCountsKey = 'word_pair_usage_counts';
+  static const String _recentWordPairKeysKey = 'recent_word_pair_keys';
+  static const int _recentWordPairLimit = 15;
   final List<Player> _players = [];
   final List<String> _registeredPlayerNames = [];
   final List<String> _selectedPlayerNames = [];
@@ -239,7 +245,10 @@ class GameProvider extends ChangeNotifier {
   final Map<String, PlayerStatistics> _playerStatistics = {};
   final List<MapEntry<String, int>> _lastSessionLeaderboard = [];
   final List<CustomWordPack> _customWordPacks = [];
-  final Set<String> _usedWordPairKeys = {};
+  final Map<String, int> _wordPairUsageCounts = {};
+  final List<String> _recentWordPairKeys = [];
+  Future<void> _roleProgressWrite = Future.value();
+  Future<void> _wordHistoryWrite = Future.value();
   GameState _gameState = GameState.setup;
   WordPair? _currentWordPair;
   WinningTeam? _winner;
@@ -249,6 +258,8 @@ class GameProvider extends ChangeNotifier {
   AppLanguage _appLanguage = AppLanguage.fr;
   String _appVersion = '';
   int _currentRound = 1;
+  int _currentRoleViewingIndex = 0;
+  bool _isInitialized = false;
   bool _roundScoresCommitted = false;
   final Map<String, String> _mrWhiteGuesses = {}; // playerId -> guessed word
   final Random _random = Random();
@@ -321,6 +332,8 @@ class GameProvider extends ChangeNotifier {
   WinningTeam? get winner => _winner;
   Player? get lastEliminatedPlayer => _lastEliminatedPlayer;
   int get currentRound => _currentRound;
+  int get currentRoleViewingIndex => _currentRoleViewingIndex;
+  bool get isInitialized => _isInitialized;
   Map<String, String> get mrWhiteGuesses => Map.unmodifiable(_mrWhiteGuesses);
   bool get hasMrWhite => _players.any((p) => p.role == PlayerRole.mrWhite);
   bool get needsMrWhiteGuess {
@@ -328,6 +341,7 @@ class GameProvider extends ChangeNotifier {
     if (eliminated?.role != PlayerRole.mrWhite) return false;
     return !_mrWhiteGuesses.containsKey(eliminated!.id);
   }
+
   List<Player> get mrWhiteGuessPlayers {
     final eliminatedPlayer = _lastEliminatedPlayer;
     if (eliminatedPlayer?.role != PlayerRole.mrWhite) return [];
@@ -339,12 +353,20 @@ class GameProvider extends ChangeNotifier {
       _players.where((p) => p.role == PlayerRole.mrWhite).toList();
 
   GameProvider() {
-    _loadAppLanguage();
-    _loadAppVersion();
-    _loadSavedPlayers();
-    _loadStatistics();
-    _loadCustomWordPacks();
-    _loadSessionScores();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    await _loadAppLanguage();
+    await _loadSavedPlayers();
+    await _loadStatistics();
+    await _loadCustomWordPacks();
+    await _loadSessionScores();
+    await _loadWordPairHistory();
+    await _loadRoleViewingProgress();
+    await _loadAppVersion();
+    _isInitialized = true;
+    notifyListeners();
   }
 
   // Player management
@@ -579,6 +601,160 @@ class GameProvider extends ChangeNotifier {
     await preferences.setString(_sessionScoresKey, jsonEncode(_sessionScores));
   }
 
+  Future<void> _loadWordPairHistory() async {
+    final preferences = await SharedPreferences.getInstance();
+    final countsSource = preferences.getString(_wordPairUsageCountsKey);
+    if (countsSource == null) {
+      _wordPairUsageCounts.addAll(WordPairsData.initialUsageCounts);
+    } else {
+      try {
+        final decoded = jsonDecode(countsSource);
+        if (decoded is Map<String, dynamic>) {
+          _wordPairUsageCounts.addAll(
+            decoded.map((key, value) => MapEntry(key, (value as num).toInt())),
+          );
+        }
+      } catch (_) {
+        _wordPairUsageCounts.clear();
+        _wordPairUsageCounts.addAll(WordPairsData.initialUsageCounts);
+      }
+    }
+    _recentWordPairKeys
+      ..clear()
+      ..addAll(preferences.getStringList(_recentWordPairKeysKey) ?? const []);
+  }
+
+  Future<void> _saveWordPairHistory() {
+    final countsSource = jsonEncode(_wordPairUsageCounts);
+    final recentKeys = List<String>.from(_recentWordPairKeys);
+    _wordHistoryWrite = _wordHistoryWrite.then((_) async {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setString(_wordPairUsageCountsKey, countsSource);
+      await preferences.setStringList(_recentWordPairKeysKey, recentKeys);
+    });
+    return _wordHistoryWrite;
+  }
+
+  Future<void> _loadRoleViewingProgress() async {
+    final preferences = await SharedPreferences.getInstance();
+    final source = preferences.getString(_roleViewingProgressKey);
+    if (source == null) return;
+
+    try {
+      final decoded = jsonDecode(source);
+      if (decoded is! Map<String, dynamic>) {
+        throw const FormatException("Invalid role viewing progress.");
+      }
+      final playersJson = decoded["players"];
+      final roleViewingIds = decoded["roleViewingPlayerIds"];
+      final playingIds = decoded["playingPlayerIds"];
+      final wordPairJson = decoded["currentWordPair"];
+      if (playersJson is! List ||
+          roleViewingIds is! List ||
+          playingIds is! List ||
+          wordPairJson is! Map<String, dynamic>) {
+        throw const FormatException("Incomplete role viewing progress.");
+      }
+
+      final restoredPlayers = playersJson.map((entry) {
+        final playerJson = entry as Map<String, dynamic>;
+        return Player(
+          id: playerJson["id"] as String,
+          name: playerJson["name"] as String,
+          role: PlayerRole.values.byName(playerJson["role"] as String),
+          word: playerJson["word"] as String?,
+          isEliminated: playerJson["isEliminated"] as bool? ?? false,
+        );
+      }).toList();
+      final restoredRoleViewingIds = roleViewingIds.cast<String>();
+      final restoredPlayingIds = playingIds.cast<String>();
+      final playerIds = restoredPlayers.map((player) => player.id).toSet();
+      if (restoredPlayers.isEmpty ||
+          restoredRoleViewingIds.length != restoredPlayers.length ||
+          restoredPlayingIds.length != restoredPlayers.length ||
+          !playerIds.containsAll(restoredRoleViewingIds) ||
+          !playerIds.containsAll(restoredPlayingIds)) {
+        throw const FormatException("Invalid restored player order.");
+      }
+
+      _players
+        ..clear()
+        ..addAll(restoredPlayers);
+      _roleViewingPlayerIds
+        ..clear()
+        ..addAll(restoredRoleViewingIds);
+      _playingPlayerIds
+        ..clear()
+        ..addAll(restoredPlayingIds);
+      _currentWordPair = WordPair(
+        citizenWord: wordPairJson["citizenWord"] as String,
+        undercoverWord: wordPairJson["undercoverWord"] as String,
+      );
+      _currentRoleViewingIndex =
+          (decoded["currentRoleViewingIndex"] as num?)?.toInt() ?? 0;
+      if (_currentRoleViewingIndex < 0 ||
+          _currentRoleViewingIndex >= restoredPlayers.length) {
+        throw const FormatException("Invalid role viewing index.");
+      }
+      _targetPlayerCount = restoredPlayers.length;
+      _selectedPlayerNames
+        ..clear()
+        ..addAll(restoredPlayers.map((player) => player.name));
+      _gameDifficulty = GameDifficulty.values.byName(
+        decoded["gameDifficulty"] as String? ?? GameDifficulty.easy.name,
+      );
+      _gameState = GameState.roleViewing;
+    } catch (_) {
+      await preferences.remove(_roleViewingProgressKey);
+      _players.clear();
+      _roleViewingPlayerIds.clear();
+      _playingPlayerIds.clear();
+      _currentWordPair = null;
+      _currentRoleViewingIndex = 0;
+      _gameState = GameState.setup;
+    }
+  }
+
+  Future<void> _saveRoleViewingProgress() {
+    if (_gameState != GameState.roleViewing || _currentWordPair == null) {
+      return Future.value();
+    }
+    final source = jsonEncode({
+      "players": _players
+          .map(
+            (player) => {
+              "id": player.id,
+              "name": player.name,
+              "role": player.role!.name,
+              "word": player.word,
+              "isEliminated": player.isEliminated,
+            },
+          )
+          .toList(),
+      "roleViewingPlayerIds": _roleViewingPlayerIds,
+      "playingPlayerIds": _playingPlayerIds,
+      "currentWordPair": {
+        "citizenWord": _currentWordPair!.citizenWord,
+        "undercoverWord": _currentWordPair!.undercoverWord,
+      },
+      "currentRoleViewingIndex": _currentRoleViewingIndex,
+      "gameDifficulty": _gameDifficulty.name,
+    });
+    _roleProgressWrite = _roleProgressWrite.then((_) async {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setString(_roleViewingProgressKey, source);
+    });
+    return _roleProgressWrite;
+  }
+
+  Future<void> _clearRoleViewingProgress() {
+    _roleProgressWrite = _roleProgressWrite.then((_) async {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.remove(_roleViewingProgressKey);
+    });
+    return _roleProgressWrite;
+  }
+
   Future<CustomWordPack> importCustomWordPack(String source) async {
     final decoded = jsonDecode(source);
     if (decoded is! Map<String, dynamic>) {
@@ -630,10 +806,12 @@ class GameProvider extends ChangeNotifier {
     _lastEliminatedPlayer = null;
     _mrWhiteGuesses.clear();
     _roundScoresCommitted = false;
+    _currentRoleViewingIndex = 0;
     _assignRoles();
     _assignWords();
     _assignRoundOrders();
     _gameState = GameState.roleViewing;
+    _saveRoleViewingProgress();
     notifyListeners();
   }
 
@@ -685,9 +863,9 @@ class GameProvider extends ChangeNotifier {
   }
 
   void _assignWords() {
-    final availableWordPairs = _availableWordPairs();
+    final selectedWordPair = _selectWordPair();
 
-    if (availableWordPairs.isEmpty) {
+    if (selectedWordPair == null) {
       throw StateError(
         _appLanguage == AppLanguage.fr
             ? "Aucune paire de mots disponible pour cette partie."
@@ -695,9 +873,8 @@ class GameProvider extends ChangeNotifier {
       );
     }
 
-    _currentWordPair =
-        availableWordPairs[_random.nextInt(availableWordPairs.length)];
-    _usedWordPairKeys.add(_wordPairKey(_currentWordPair!));
+    _currentWordPair = selectedWordPair;
+    _recordWordPairUsage(selectedWordPair);
 
     for (int i = 0; i < _players.length; i++) {
       final word = switch (_players[i].role) {
@@ -710,7 +887,7 @@ class GameProvider extends ChangeNotifier {
     }
   }
 
-  List<WordPair> _availableWordPairs() {
+  WordPair? _selectWordPair() {
     final levelOneWordPairs = switch (_appLanguage) {
       AppLanguage.fr => WordPairsData.wordPairs,
       AppLanguage.en => WordPairsDataEn.wordPairs,
@@ -725,37 +902,59 @@ class GameProvider extends ChangeNotifier {
               pack.language == _appLanguage &&
               pack.difficulty == GameDifficulty.easy,
         )
-        .expand((pack) => pack.pairs)
-        .toList();
+        .expand((pack) => pack.pairs);
     final customLevelTwoWordPairs = _customWordPacks
         .where(
           (pack) =>
               pack.language == _appLanguage &&
               pack.difficulty == GameDifficulty.hard,
         )
-        .expand((pack) => pack.pairs)
-        .toList();
-    final wordPairPools = switch (_gameDifficulty) {
-      GameDifficulty.easy => [
-        [...levelOneWordPairs, ...customLevelOneWordPairs],
-      ],
-      GameDifficulty.hard => [
-        [...levelOneWordPairs, ...customLevelOneWordPairs],
-        [...levelTwoWordPairs, ...customLevelTwoWordPairs],
-      ]..shuffle(_random),
-    };
+        .expand((pack) => pack.pairs);
 
-    for (final wordPairPool in wordPairPools) {
-      final availableWordPairs = wordPairPool.where((wordPair) {
-        return !_usedWordPairKeys.contains(_wordPairKey(wordPair));
-      }).toList();
-
-      if (availableWordPairs.isNotEmpty) {
-        return availableWordPairs;
-      }
+    final allAvailablePairs = <WordPair>[
+      ...levelOneWordPairs,
+      ...customLevelOneWordPairs,
+      if (_gameDifficulty == GameDifficulty.hard) ...levelTwoWordPairs,
+      if (_gameDifficulty == GameDifficulty.hard) ...customLevelTwoWordPairs,
+    ];
+    final uniquePairs = <String, WordPair>{};
+    for (final pair in allAvailablePairs) {
+      uniquePairs.putIfAbsent(_wordPairKey(pair), () => pair);
     }
+    if (uniquePairs.isEmpty) return null;
 
-    return [];
+    final nonRecentPairs = uniquePairs.entries
+        .where((entry) => !_recentWordPairKeys.contains(entry.key))
+        .toList();
+    final eligiblePairs = nonRecentPairs.isNotEmpty
+        ? nonRecentPairs
+        : uniquePairs.entries.toList();
+    final minimumUsageCount = eligiblePairs
+        .map((entry) => _wordPairUsageCounts[entry.key] ?? 0)
+        .reduce(min);
+    final leastUsedPairs = eligiblePairs
+        .where(
+          (entry) =>
+              (_wordPairUsageCounts[entry.key] ?? 0) == minimumUsageCount,
+        )
+        .toList();
+
+    return leastUsedPairs[_random.nextInt(leastUsedPairs.length)].value;
+  }
+
+  void _recordWordPairUsage(WordPair wordPair) {
+    final key = _wordPairKey(wordPair);
+    _wordPairUsageCounts[key] = (_wordPairUsageCounts[key] ?? 0) + 1;
+    _recentWordPairKeys
+      ..remove(key)
+      ..add(key);
+    if (_recentWordPairKeys.length > _recentWordPairLimit) {
+      _recentWordPairKeys.removeRange(
+        0,
+        _recentWordPairKeys.length - _recentWordPairLimit,
+      );
+    }
+    _saveWordPairHistory();
   }
 
   String _wordPairKey(WordPair wordPair) {
@@ -771,6 +970,18 @@ class GameProvider extends ChangeNotifier {
   void startPlayingPhase() {
     if (_gameState != GameState.roleViewing) return;
     _gameState = GameState.playing;
+    _currentRoleViewingIndex = 0;
+    _clearRoleViewingProgress();
+    notifyListeners();
+  }
+
+  void advanceRoleViewing() {
+    if (_gameState != GameState.roleViewing ||
+        _currentRoleViewingIndex >= _roleViewingPlayerIds.length - 1) {
+      return;
+    }
+    _currentRoleViewingIndex++;
+    _saveRoleViewingProgress();
     notifyListeners();
   }
 
@@ -789,6 +1000,9 @@ class GameProvider extends ChangeNotifier {
         isEliminated: true,
       );
       _checkWinConditions();
+      if (_gameState == GameState.playing) {
+        _reshufflePlayingOrderAfterVote();
+      }
       _currentRound++;
     }
     notifyListeners();
@@ -823,6 +1037,36 @@ class GameProvider extends ChangeNotifier {
     }
 
     notifyListeners();
+  }
+
+  void _reshufflePlayingOrderAfterVote() {
+    final alive = alivePlayers;
+    if (alive.length < 2) return;
+
+    final originalFirstId = _playingPlayerIds.isEmpty
+        ? null
+        : _playingPlayerIds.first;
+    final originalFirstCandidates = alive
+        .where((player) => player.id == originalFirstId)
+        .toList();
+    late final Player firstPlayer;
+    if (originalFirstCandidates.isNotEmpty) {
+      firstPlayer = originalFirstCandidates.first;
+    } else {
+      final eligibleFirstPlayers =
+          alive.where((player) => player.role != PlayerRole.mrWhite).toList()
+            ..shuffle(_random);
+      if (eligibleFirstPlayers.isEmpty) return;
+      firstPlayer = eligibleFirstPlayers.first;
+    }
+
+    final remainingPlayers =
+        alive.where((player) => player.id != firstPlayer.id).toList()
+          ..shuffle(_random);
+    _playingPlayerIds
+      ..clear()
+      ..add(firstPlayer.id)
+      ..addAll(remainingPlayers.map((player) => player.id));
   }
 
   void submitMrWhiteGuesses(Map<String, String> guesses) {
@@ -971,8 +1215,10 @@ class GameProvider extends ChangeNotifier {
     _winner = null;
     _lastEliminatedPlayer = null;
     _currentRound = 1;
+    _currentRoleViewingIndex = 0;
     _mrWhiteGuesses.clear();
     _roundScoresCommitted = false;
+    _clearRoleViewingProgress();
     notifyListeners();
   }
 
@@ -994,9 +1240,10 @@ class GameProvider extends ChangeNotifier {
     _winner = null;
     _lastEliminatedPlayer = null;
     _currentRound = 1;
+    _currentRoleViewingIndex = 0;
     _mrWhiteGuesses.clear();
     _roundScoresCommitted = false;
-    _usedWordPairKeys.clear();
+    _clearRoleViewingProgress();
     _saveStatistics();
     _saveSessionScores();
     notifyListeners();

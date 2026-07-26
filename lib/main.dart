@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'screens/player_setup_screen.dart';
 import 'providers/game_provider.dart';
+import 'screens/role_viewing_screen.dart';
 
 void main() {
   runApp(const UndercoverApp());
@@ -177,8 +178,26 @@ class UndercoverApp extends StatelessWidget {
           iconTheme: const IconThemeData(color: AppColors.purpleMain, size: 30),
           useMaterial3: true,
         ),
-        home: const PlayerSetupScreen(),
+        home: const _AppBootstrap(),
       ),
     );
+  }
+}
+
+class _AppBootstrap extends StatelessWidget {
+  const _AppBootstrap();
+
+  @override
+  Widget build(BuildContext context) {
+    final gameProvider = context.watch<GameProvider>();
+    if (!gameProvider.isInitialized) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (gameProvider.gameState == GameState.roleViewing) {
+      return const RoleViewingScreen();
+    }
+
+    return const PlayerSetupScreen();
   }
 }
