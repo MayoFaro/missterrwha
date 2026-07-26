@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../localization/app_strings.dart';
 import '../providers/game_provider.dart';
+import '../widgets/round_exit_guard.dart';
 import 'round_summary_screen.dart';
 
 class MrWhiteGuessScreen extends StatefulWidget {
@@ -107,61 +108,63 @@ class _MrWhiteGuessScreenState extends State<MrWhiteGuessScreen> {
         final strings = AppStrings(gameProvider.appLanguage);
         final mrWhites = gameProvider.mrWhiteGuessPlayers;
 
-        return Scaffold(
-          appBar: AppBar(title: Text(strings.mrWhiteGuessTitle)),
-          body: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text(
-                        strings.mrWhiteGuessPrompt,
-                        style: Theme.of(context).textTheme.headlineSmall,
+        return RoundExitGuard(
+          child: Scaffold(
+            appBar: AppBar(title: Text(strings.mrWhiteGuessTitle)),
+            body: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Text(
+                          strings.mrWhiteGuessPrompt,
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: ListView.separated(
-                      itemCount: mrWhites.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final player = mrWhites[index];
-
-                        return TextField(
-                          controller: _controllers[player.id],
-                          enabled: !_guessSubmitted,
-                          decoration: InputDecoration(
-                            labelText: strings.mrWhiteGuessLabel(player.name),
-                            border: const OutlineInputBorder(),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  if (_guessSubmitted) ...[
                     const SizedBox(height: 16),
-                    _buildGuessResultCard(context, gameProvider, strings),
+                    Expanded(
+                      child: ListView.separated(
+                        itemCount: mrWhites.length,
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final player = mrWhites[index];
+
+                          return TextField(
+                            controller: _controllers[player.id],
+                            enabled: !_guessSubmitted,
+                            decoration: InputDecoration(
+                              labelText: strings.mrWhiteGuessLabel(player.name),
+                              border: const OutlineInputBorder(),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    if (_guessSubmitted) ...[
+                      const SizedBox(height: 16),
+                      _buildGuessResultCard(context, gameProvider, strings),
+                    ],
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _guessSubmitted
+                          ? _goToRoundSummary
+                          : () => _submitGuesses(strings),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.all(16),
+                      ),
+                      child: Text(
+                        _guessSubmitted ? strings.viewSummary : strings.submit,
+                        style: const TextStyle(fontSize: 22),
+                      ),
+                    ),
                   ],
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: _guessSubmitted
-                        ? _goToRoundSummary
-                        : () => _submitGuesses(strings),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.all(16),
-                    ),
-                    child: Text(
-                      _guessSubmitted ? strings.viewSummary : strings.submit,
-                      style: const TextStyle(fontSize: 22),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),

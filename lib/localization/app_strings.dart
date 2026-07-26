@@ -1,4 +1,4 @@
-﻿import '../models/player.dart';
+import '../models/player.dart';
 import '../providers/game_provider.dart';
 
 class AppStrings {
@@ -57,6 +57,13 @@ class AppStrings {
   String get newRoleDistribution =>
       isFr ? 'Nouvelle répartition des rôles :' : 'New role distribution:';
   String get cancel => isFr ? 'Annuler' : 'Cancel';
+  String get yes => isFr ? 'Oui' : 'Yes';
+  String get no => isFr ? 'Non' : 'No';
+  String get exitRoundTitle =>
+      isFr ? 'Quitter la manche ?' : 'Leave the round?';
+  String get exitRoundMessage => isFr
+      ? 'Êtes-vous sûr de vouloir sortir de la manche en cours ?'
+      : 'Are you sure you want to leave the current round?';
   String get roleDiscovery => isFr ? 'Découverte du rôle' : 'Role reveal';
   String playerProgress(int current, int total) =>
       isFr ? 'Joueur $current sur $total' : 'Player $current of $total';
@@ -152,8 +159,7 @@ class AppStrings {
   String get undercoverWord => isFr ? 'Mot undercover' : 'Undercover word';
   String get addPair => isFr ? 'Ajouter' : 'Add pair';
   String get savePack => isFr ? 'Sauvegarder le pack' : 'Save pack';
-  String get noPairsYet =>
-      isFr ? 'Aucune paire ajoutée' : 'No pairs added yet';
+  String get noPairsYet => isFr ? 'Aucune paire ajoutée' : 'No pairs added yet';
   String get packNameRequired =>
       isFr ? 'Donnez un nom au pack.' : 'Pack name is required.';
   String get atLeastOnePair => isFr
@@ -188,8 +194,8 @@ class AppStrings {
   String eliminationOutcome(WinningTeam? winner) => winner != null
       ? '${winnerMessage(winner)} ${isFr ? "Une condition de victoire est atteinte." : "A win condition has been reached."}'
       : isFr
-          ? "Aucune condition de victoire n'est atteinte. La manche continue."
-          : 'No win condition has been reached. The round continues.';
+      ? "Aucune condition de victoire n'est atteinte. La manche continue."
+      : 'No win condition has been reached. The round continues.';
 
   String get discardPackTitle =>
       isFr ? 'Abandonner ce pack ?' : 'Discard this pack?';

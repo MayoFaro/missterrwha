@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../localization/app_strings.dart';
 import '../models/player.dart';
 import '../providers/game_provider.dart';
+import '../widgets/round_exit_guard.dart';
 import 'game_screen.dart';
 
 class RoleViewingScreen extends StatefulWidget {
@@ -102,8 +103,7 @@ class _RoleViewingScreenState extends State<RoleViewingScreen>
         final currentPlayerIndex = gameProvider.currentRoleViewingIndex;
         final currentPlayer = roleViewingPlayers[currentPlayerIndex];
 
-        return PopScope(
-          canPop: false,
+        return RoundExitGuard(
           child: Scaffold(
             appBar: AppBar(title: Text(strings.roleDiscovery)),
             body: Padding(
@@ -215,8 +215,8 @@ class _RoleViewingScreenState extends State<RoleViewingScreen>
                 ],
               ),
             ),
-          ), // Scaffold
-        ); // PopScope
+          ),
+        );
       },
     );
   }

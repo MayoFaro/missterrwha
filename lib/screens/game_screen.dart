@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../localization/app_strings.dart';
 import '../models/player.dart';
 import '../providers/game_provider.dart';
+import '../widgets/round_exit_guard.dart';
 import 'mr_white_guess_screen.dart';
 import 'round_summary_screen.dart';
 
@@ -15,6 +16,7 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> {
+  static const Color _citizenCounterColor = Color(0xFF8A4B00);
   void _startVotingPhase() {
     context.read<GameProvider>().startVotingPhase();
   }
@@ -190,7 +192,7 @@ class _GameScreenState extends State<GameScreen> {
       children: [
         _roleCounter(
           icon: Icons.groups,
-          color: Theme.of(context).colorScheme.secondary,
+          color: _citizenCounterColor,
           count: gameProvider.aliveCitizenCount,
         ),
         _roleCounter(
@@ -213,81 +215,83 @@ class _GameScreenState extends State<GameScreen> {
       builder: (context, gameProvider, child) {
         final strings = AppStrings(gameProvider.appLanguage);
 
-        return Scaffold(
-          appBar: AppBar(title: Text(strings.roundInProgress)),
-          body: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text(
-                        strings.roundNumber(gameProvider.currentRound),
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: _buildStatusCard(context, gameProvider, strings),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Expanded(
-                    child: Card(
-                      child: Scrollbar(
-                        thumbVisibility: true,
-                        child: ListView.builder(
-                          itemCount: gameProvider.alivePlayers.length,
-                          itemBuilder: (context, index) {
-                            final player = gameProvider.alivePlayers[index];
-                            return ListTile(
-                              title: Text(
-                                player.name,
-                                style: Theme.of(context).textTheme.titleLarge,
-                              ),
-                              trailing:
-                                  gameProvider.gameState == GameState.voting
-                                  ? IconButton(
-                                      onPressed: () =>
-                                          _showEliminationConfirmationDialog(
-                                            player,
-                                            strings,
-                                          ),
-                                      icon: const Icon(Icons.close),
-                                    )
-                                  : Text(
-                                      (index + 1).toString(),
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.titleLarge,
-                                    ),
-                            );
-                          },
+        return RoundExitGuard(
+          child: Scaffold(
+            appBar: AppBar(title: Text(strings.roundInProgress)),
+            body: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Text(
+                          strings.roundNumber(gameProvider.currentRound),
+                          style: Theme.of(context).textTheme.headlineSmall,
                         ),
                       ),
                     ),
-                  ),
-                  if (gameProvider.gameState != GameState.voting) ...[
                     const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: _startVotingPhase,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.all(16),
-                      ),
-                      child: Text(
-                        strings.passToVote,
-                        style: const TextStyle(fontSize: 22),
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: _buildStatusCard(context, gameProvider, strings),
                       ),
                     ),
+                    const SizedBox(height: 20),
+                    Expanded(
+                      child: Card(
+                        child: Scrollbar(
+                          thumbVisibility: true,
+                          child: ListView.builder(
+                            itemCount: gameProvider.alivePlayers.length,
+                            itemBuilder: (context, index) {
+                              final player = gameProvider.alivePlayers[index];
+                              return ListTile(
+                                title: Text(
+                                  player.name,
+                                  style: Theme.of(context).textTheme.titleLarge,
+                                ),
+                                trailing:
+                                    gameProvider.gameState == GameState.voting
+                                    ? IconButton(
+                                        onPressed: () =>
+                                            _showEliminationConfirmationDialog(
+                                              player,
+                                              strings,
+                                            ),
+                                        icon: const Icon(Icons.close),
+                                      )
+                                    : Text(
+                                        (index + 1).toString(),
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.titleLarge,
+                                      ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (gameProvider.gameState != GameState.voting) ...[
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: _startVotingPhase,
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.all(16),
+                        ),
+                        child: Text(
+                          strings.passToVote,
+                          style: const TextStyle(fontSize: 22),
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),
