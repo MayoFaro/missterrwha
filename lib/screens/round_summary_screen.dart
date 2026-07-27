@@ -86,6 +86,24 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
                           Text(
                             '${strings.mrWhitePoints} : ${scoreSummary.mrWhitePoints}',
                           ),
+                          if (gameProvider.currentWordPair != null) ...[
+                            const SizedBox(height: 12),
+                            const Divider(),
+                            const SizedBox(height: 8),
+                            Text(
+                              '${strings.civilWord} : ${gameProvider.currentWordPair!.citizenWord}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${strings.undercoverWord} : ${gameProvider.currentWordPair!.undercoverWord}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                           if (scoreSummary
                               .mrWhiteCorrectGuessers
                               .isNotEmpty) ...[

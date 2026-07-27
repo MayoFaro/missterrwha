@@ -84,6 +84,21 @@ class AppStrings {
       ? "Discutez de votre mot dans l'ordre affiché. "
       : 'Discuss your word in the displayed order. ';
   String get firstPlayer => isFr ? 'Premier joueur : ' : 'First player: ';
+  String get reviewMyWord => isFr ? 'Revoir mon mot' : 'Review my word';
+  String get chooseYourName =>
+      isFr ? 'Choisissez votre nom' : 'Choose your name';
+  String passPhoneTo(String name) =>
+      isFr ? 'Passez le téléphone à $name.' : 'Pass the phone to $name.';
+  String get wordRecallPrivacyHint => isFr
+      ? 'Assurez-vous que les autres joueurs ne regardent pas.'
+      : 'Make sure the other players are not looking.';
+  String get readyToReviewWord => isFr ? 'Je suis prêt' : 'I am ready';
+  String get holdToReviewWord => isFr
+      ? 'Maintenez le bouton appuyé pour revoir votre mot.'
+      : 'Press and hold the button to review your word.';
+  String get holdToReveal => isFr ? 'Maintenir pour révéler' : 'Hold to reveal';
+  String get youAreMrWhite =>
+      isFr ? 'Vous êtes Mr White.' : 'You are Mr White.';
   String get passToVote => isFr ? 'Passer au vote' : 'Go to vote';
   String get confirmElimination =>
       isFr ? "Confirmer l'élimination" : 'Confirm elimination';

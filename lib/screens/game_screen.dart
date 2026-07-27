@@ -17,8 +17,143 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   static const Color _citizenCounterColor = Color(0xFF8A4B00);
+
   void _startVotingPhase() {
     context.read<GameProvider>().startVotingPhase();
+  }
+
+  Future<void> _showWordRecallPlayerPicker(
+    GameProvider gameProvider,
+    AppStrings strings,
+  ) async {
+    final player = await showModalBottomSheet<Player>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              child: Text(
+                strings.chooseYourName,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final player in gameProvider.alivePlayers)
+                    ListTile(
+                      leading: const Icon(Icons.person_outline),
+                      title: Text(player.name),
+                      onTap: () => Navigator.of(context).pop(player),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (player == null || !mounted) return;
+    await _showWordRecallDialog(player, strings);
+  }
+
+  Future<void> _showWordRecallDialog(Player player, AppStrings strings) async {
+    var isPlayerReady = false;
+    var isWordVisible = false;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => PopScope(
+          canPop: !isWordVisible,
+          child: AlertDialog(
+            title: Text(
+              isPlayerReady ? player.name : strings.passPhoneTo(player.name),
+            ),
+            content: isPlayerReady
+                ? Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        strings.holdToReviewWord,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 150),
+                        child: isWordVisible
+                            ? Column(
+                                key: const ValueKey('word'),
+                                children: [
+                                  Text(strings.yourWord),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    player.role == PlayerRole.mrWhite
+                                        ? strings.youAreMrWhite
+                                        : player.word ?? '',
+                                    textAlign: TextAlign.center,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .headlineMedium
+                                        ?.copyWith(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.primary,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                  ),
+                                ],
+                              )
+                            : const SizedBox(
+                                key: ValueKey('hidden'),
+                                height: 72,
+                              ),
+                      ),
+                      const SizedBox(height: 16),
+                      Listener(
+                        onPointerDown: (_) =>
+                            setDialogState(() => isWordVisible = true),
+                        onPointerUp: (_) => Navigator.of(dialogContext).pop(),
+                        onPointerCancel: (_) =>
+                            Navigator.of(dialogContext).pop(),
+                        child: ElevatedButton.icon(
+                          onPressed: () {},
+                          icon: const Icon(Icons.visibility_outlined),
+                          label: Text(strings.holdToReveal),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.all(16),
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : Text(
+                    strings.wordRecallPrivacyHint,
+                    textAlign: TextAlign.center,
+                  ),
+            actions: isPlayerReady
+                ? null
+                : [
+                    TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      child: Text(strings.cancel),
+                    ),
+                    ElevatedButton(
+                      onPressed: () =>
+                          setDialogState(() => isPlayerReady = true),
+                      child: Text(strings.readyToReviewWord),
+                    ),
+                  ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _roleCounter({
@@ -279,6 +414,29 @@ class _GameScreenState extends State<GameScreen> {
                     ),
                     if (gameProvider.gameState != GameState.voting) ...[
                       const SizedBox(height: 20),
+                      OutlinedButton.icon(
+                        onPressed: () =>
+                            _showWordRecallPlayerPicker(gameProvider, strings),
+                        icon: const Icon(Icons.visibility_outlined),
+                        label: Text(
+                          strings.reviewMyWord,
+                          style: const TextStyle(fontSize: 20),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.surface,
+                          foregroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primary,
+                          side: BorderSide(
+                            color: Theme.of(context).colorScheme.secondary,
+                            width: 2.5,
+                          ),
+                          padding: const EdgeInsets.all(14),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       ElevatedButton(
                         onPressed: _startVotingPhase,
                         style: ElevatedButton.styleFrom(
